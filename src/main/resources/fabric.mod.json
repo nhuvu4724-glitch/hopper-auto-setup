@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "hopper-auto-setup",
+  "version": "${version}",
+  "name": "Hopper Auto Setup",
+  "description": "Scans a configured region for hoppers, walks to them with Meteor's Baritone path manager, opens them and puts one selected item into the first four hopper slots.",
+  "authors": ["Truong"],
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "com.truong.hopperautosetup.HopperAutoSetup"
+    ]
+  },
+  "custom": {
+    "meteor-client:color": "145,61,226",
+    "modmenu": {
+      "parent": {
+        "id": "meteor-client"
+      }
+    }
+  },
+  "depends": {
+    "java": ">=21",
+    "minecraft": ["1.21.11"],
+    "meteor-client": "*"
+  }
+}
