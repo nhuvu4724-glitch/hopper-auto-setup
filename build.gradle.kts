@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     minecraft("com.mojang:minecraft:1.21.11")
-    mappings("net.fabricmc:yarn:1.21.1+build.3:v2") 
+    mappings("net.fabricmc:yarn:1.21.11+build.3:v2")
     modImplementation("net.fabricmc:fabric-loader:0.18.2")
     modImplementation(files("libs/meteor-client-1.21.11-82.jar"))
 }
