@@ -155,7 +155,7 @@ public class HopperAutoSetupModule extends Module {
             waitTicks = 0;
         }
 
-        double distanceSq = mc.player.getPos().squaredDistanceTo(Vec3d.ofCenter(current));
+        double distanceSq = squaredDistanceTo(current);
         double reachSq = reach.get() * reach.get();
 
         if (distanceSq > reachSq) {
@@ -189,8 +189,6 @@ public class HopperAutoSetupModule extends Module {
         int minZ = Math.min(z1.get(), z2.get());
         int maxZ = Math.max(z1.get(), z2.get());
 
-        // The client can only inspect chunks it currently has loaded. Baritone will load
-        // nearby chunks while walking, so later scans can discover more hoppers.
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
@@ -209,8 +207,16 @@ public class HopperAutoSetupModule extends Module {
         if (mc.player == null) return null;
         return found.stream()
             .filter(pos -> !completed.contains(pos))
-            .min(Comparator.comparingDouble(pos -> mc.player.getPos().squaredDistanceTo(Vec3d.ofCenter(pos))))
+            .min(Comparator.comparingDouble(this::squaredDistanceTo))
             .orElse(null);
+    }
+
+    private double squaredDistanceTo(BlockPos pos) {
+        if (mc.player == null || pos == null) return Double.MAX_VALUE;
+        double dx = mc.player.getX() - (pos.getX() + 0.5);
+        double dy = mc.player.getY() - (pos.getY() + 0.5);
+        double dz = mc.player.getZ() - (pos.getZ() + 0.5);
+        return dx * dx + dy * dy + dz * dz;
     }
 
     private boolean clickHopper(BlockPos pos) {
@@ -262,8 +268,6 @@ public class HopperAutoSetupModule extends Module {
 
         int screenSlot = inventoryIndexToScreenSlot(inventoryIndex);
 
-        // Pick up the selected stack, right-click the hopper to place exactly one item,
-        // then return the remainder to the same inventory slot.
         mc.interactionManager.clickSlot(
             mc.player.currentScreenHandler.syncId,
             screenSlot,
@@ -311,7 +315,6 @@ public class HopperAutoSetupModule extends Module {
     }
 
     private int inventoryIndexToScreenSlot(int inventoryIndex) {
-        // Hopper: 0-4; player main inventory: 5-31; hotbar: 32-40.
         return inventoryIndex < 9 ? 32 + inventoryIndex : 5 + (inventoryIndex - 9);
     }
 
@@ -327,4 +330,4 @@ public class HopperAutoSetupModule extends Module {
             mc.player.closeHandledScreen();
         }
     }
-  }
+}
