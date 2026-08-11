@@ -14,10 +14,12 @@ repositories {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:1.21.11")
-    mappings("net.fabricmc:yarn:1.21.11+build.3:v2")
-    modImplementation("net.fabricmc:fabric-loader:0.18.2")
-    modImplementation(files("libs/meteor-client-1.21.11-82.jar"))
+    minecraft("com.mojang:minecraft:1.21.1")
+    mappings("net.fabricmc:yarn:1.21.1+build.3:v2")
+    modImplementation("net.fabricmc:fabric-loader:0.16.2")
+
+    // Thay thế file jar local bằng dependency lấy trực tiếp từ Meteor Maven
+    modImplementation("meteordevelopment:meteor-client:1.21.1-SNAPSHOT")
 }
 
 java {
