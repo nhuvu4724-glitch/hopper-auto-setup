@@ -14,15 +14,15 @@ repositories {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:1.21.1")
-    mappings("net.fabricmc:yarn:1.21.1+build.3:v2")
+    minecraft("com.mojang:minecraft:1.21.11")
+    mappings("net.fabricmc:yarn:1.21.11+build.3:v2")
     modImplementation("net.fabricmc:fabric-loader:0.16.2")
 
     // 1. BẮT BUỘC: Thêm Orbit để fix lỗi "package meteordevelopment.orbit does not exist"
     implementation("meteordevelopment:orbit:0.2.3")
 
     // 2. SỬ DỤNG FILE LOCAL: Vì Maven chưa có bản 1.21.1, ta bắt buộc dùng file bạn đã có sẵn
-    modImplementation(files("libs/meteor-client-1.21.1-82.jar"))
+    modImplementation(files("libs/meteor-client-1.21.11-82.jar"))
 }
 
 java {
