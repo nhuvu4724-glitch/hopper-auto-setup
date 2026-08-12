@@ -21,8 +21,10 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class HopperAutoSetupModule extends Module {
@@ -53,14 +55,14 @@ public class HopperAutoSetupModule extends Module {
         .description("Ticks to wait after clicking a hopper before processing its GUI.")
         .range(2, 40)
         .sliderRange(2, 20)
-        .defaultValue(6)
+        .defaultValue(10)
         .build());
     private final Setting<Integer> clickDelay = behavior.add(new IntSetting.Builder()
         .name("click-delay")
-        .description("Ticks between individual inventory placements.")
+        .description("Ticks between individual inventory placements. Raise this if the server is laggy and items get skipped or duplicated.")
         .range(1, 20)
         .sliderRange(1, 10)
-        .defaultValue(2)
+        .defaultValue(4)
         .build());
     private final Setting<Integer> reach = behavior.add(new IntSetting.Builder()
         .name("reach")
@@ -69,9 +71,19 @@ public class HopperAutoSetupModule extends Module {
         .sliderRange(2, 5)
         .defaultValue(4)
         .build());
+    private final Setting<Integer> sweepSpacing = behavior.add(new IntSetting.Builder()
+        .name("sweep-spacing")
+        .description("Grid spacing (blocks) used to walk the region and load chunks when no known hopper is left nearby.")
+        .range(8, 128)
+        .sliderRange(16, 64)
+        .defaultValue(32)
+        .build());
 
     private final Set<BlockPos> completed = new HashSet<>();
     private final Set<BlockPos> found = new HashSet<>();
+
+    private List<BlockPos> waypoints;
+    private int waypointIndex;
 
     private BlockPos current;
     private int tick;
@@ -82,13 +94,15 @@ public class HopperAutoSetupModule extends Module {
     private boolean processing;
 
     public HopperAutoSetupModule() {
-        super(HopperAutoSetup.CATEGORY, "hopper-auto-setup", "Finds hoppers in a configured region, walks to them, empties anything already inside back into your inventory, then fills hopper slots 1-4 with one selected item each.");
+        super(HopperAutoSetup.CATEGORY, "hopper-auto-setup", "Finds hoppers in a configured region, walks to them (sweeping the region to load new chunks if needed), empties anything already inside back into your inventory, then fills hopper slots 1-4 with one selected item each.");
     }
 
     @Override
     public void onActivate() {
         completed.clear();
         found.clear();
+        waypoints = null;
+        waypointIndex = 0;
         current = null;
         tick = 0;
         waitTicks = 0;
@@ -144,7 +158,10 @@ public class HopperAutoSetupModule extends Module {
 
         if (current == null) {
             current = findNearestUncompleted();
-            if (current == null) return;
+            if (current == null) {
+                sweep();
+                return;
+            }
             clicked = false;
             waitTicks = 0;
         }
@@ -195,6 +212,51 @@ public class HopperAutoSetupModule extends Module {
                 }
             }
         }
+    }
+
+    // Walks a grid of waypoints across the configured region so unloaded chunks get loaded
+    // and re-scanned. Only runs while there is no already-known hopper to go handle.
+    private void sweep() {
+        if (waypoints == null) buildWaypoints();
+        if (waypoints.isEmpty() || waypointIndex >= waypoints.size()) return;
+        if (mc.player == null) return;
+
+        BlockPos raw = waypoints.get(waypointIndex);
+        BlockPos target = new BlockPos(raw.getX(), (int) mc.player.getY(), raw.getZ());
+
+        double dx = mc.player.getX() - (target.getX() + 0.5);
+        double dz = mc.player.getZ() - (target.getZ() + 0.5);
+        double distSqXZ = dx * dx + dz * dz;
+
+        if (distSqXZ < 12 * 12) {
+            waypointIndex++;
+            return;
+        }
+
+        IPathManager path = PathManagers.get();
+        if (!path.isPathing()) path.moveTo(target, false);
+    }
+
+    private void buildWaypoints() {
+        waypoints = new ArrayList<>();
+
+        int minX = Math.min(x1.get(), x2.get());
+        int maxX = Math.max(x1.get(), x2.get());
+        int minZ = Math.min(z1.get(), z2.get());
+        int maxZ = Math.max(z1.get(), z2.get());
+        int step = Math.max(1, sweepSpacing.get());
+
+        boolean reverse = false;
+        for (int x = minX; x <= maxX; x += step) {
+            if (!reverse) {
+                for (int z = minZ; z <= maxZ; z += step) waypoints.add(new BlockPos(x, 0, z));
+            } else {
+                for (int z = maxZ; z >= minZ; z -= step) waypoints.add(new BlockPos(x, 0, z));
+            }
+            reverse = !reverse;
+        }
+
+        waypointIndex = 0;
     }
 
     private BlockPos findNearestUncompleted() {
