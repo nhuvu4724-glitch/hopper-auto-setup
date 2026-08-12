@@ -21,10 +21,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class HopperAutoSetupModule extends Module {
@@ -73,7 +71,7 @@ public class HopperAutoSetupModule extends Module {
         .build());
 
     private final Set<BlockPos> completed = new HashSet<>();
-    private final List<BlockPos> found = new ArrayList<>();
+    private final Set<BlockPos> found = new HashSet<>();
 
     private BlockPos current;
     private int tick;
@@ -248,7 +246,6 @@ public class HopperAutoSetupModule extends Module {
         int targetSlot = placeStep;
         ItemStack hopperStack = mc.player.currentScreenHandler.getSlot(targetSlot).getStack();
 
-        // Slot already has something in it: shift-click it back into our inventory first.
         if (!hopperStack.isEmpty()) {
             if (collectAttempts >= 3) {
                 warning("Slot %d at %s stayed occupied, skipping it.", targetSlot, current.toShortString());
