@@ -3,16 +3,14 @@ package com.truong.hopperautosetup;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.pathing.IPathManager;
 import meteordevelopment.meteorclient.pathing.PathManagers;
-import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.IntSetting;
 import meteordevelopment.meteorclient.settings.ItemSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
-import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Blocks;
-import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.client.gui.screen.ingame.HopperScreen;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -73,11 +71,6 @@ public class HopperAutoSetupModule extends Module {
         .sliderRange(2, 5)
         .defaultValue(4)
         .build());
-    private final Setting<Boolean> onlyEmpty = behavior.add(new BoolSetting.Builder()
-        .name("only-empty-slots")
-        .description("Only put the selected item into empty hopper slots; never overwrite existing contents.")
-        .defaultValue(true)
-        .build());
 
     private final Set<BlockPos> completed = new HashSet<>();
     private final List<BlockPos> found = new ArrayList<>();
@@ -86,11 +79,12 @@ public class HopperAutoSetupModule extends Module {
     private int tick;
     private int waitTicks;
     private int placeStep;
+    private int collectAttempts;
     private boolean clicked;
     private boolean processing;
 
     public HopperAutoSetupModule() {
-        super(Categories.World, "hopper-auto-setup", "Finds hoppers in a configured region, walks to them, opens them and fills hopper slots 1-4 with one selected item each.");
+        super(HopperAutoSetup.CATEGORY, "hopper-auto-setup", "Finds hoppers in a configured region, walks to them, empties anything already inside back into your inventory, then fills hopper slots 1-4 with one selected item each.");
     }
 
     @Override
@@ -101,6 +95,7 @@ public class HopperAutoSetupModule extends Module {
         tick = 0;
         waitTicks = 0;
         placeStep = 0;
+        collectAttempts = 0;
         clicked = false;
         processing = false;
         scan();
@@ -127,7 +122,7 @@ public class HopperAutoSetupModule extends Module {
         if (mc.player == null || mc.world == null) return;
         tick++;
 
-        if (mc.currentScreen instanceof GenericContainerScreen) {
+        if (mc.currentScreen instanceof HopperScreen) {
             if (!processing && current != null && clicked) {
                 if (waitTicks > 0) {
                     waitTicks--;
@@ -135,6 +130,7 @@ public class HopperAutoSetupModule extends Module {
                 }
                 processing = true;
                 placeStep = 0;
+                collectAttempts = 0;
             }
             if (processing) {
                 handleContainer();
@@ -236,7 +232,7 @@ public class HopperAutoSetupModule extends Module {
     }
 
     private void handleContainer() {
-        if (!(mc.currentScreen instanceof GenericContainerScreen)) {
+        if (!(mc.currentScreen instanceof HopperScreen)) {
             processing = false;
             clicked = false;
             return;
@@ -252,11 +248,29 @@ public class HopperAutoSetupModule extends Module {
         int targetSlot = placeStep;
         ItemStack hopperStack = mc.player.currentScreenHandler.getSlot(targetSlot).getStack();
 
-        if (onlyEmpty.get() && !hopperStack.isEmpty()) {
-            placeStep++;
+        // Slot already has something in it: shift-click it back into our inventory first.
+        if (!hopperStack.isEmpty()) {
+            if (collectAttempts >= 3) {
+                warning("Slot %d at %s stayed occupied, skipping it.", targetSlot, current.toShortString());
+                placeStep++;
+                collectAttempts = 0;
+                waitTicks = clickDelay.get();
+                return;
+            }
+
+            mc.interactionManager.clickSlot(
+                mc.player.currentScreenHandler.syncId,
+                targetSlot,
+                0,
+                SlotActionType.QUICK_MOVE,
+                mc.player
+            );
+            collectAttempts++;
             waitTicks = clickDelay.get();
             return;
         }
+
+        collectAttempts = 0;
 
         Item wanted = item.get();
         int inventoryIndex = findInventorySlot(wanted);
@@ -301,6 +315,7 @@ public class HopperAutoSetupModule extends Module {
         clicked = false;
         processing = false;
         placeStep = 0;
+        collectAttempts = 0;
         stopPathing();
         closeIfOpen();
     }
@@ -326,7 +341,7 @@ public class HopperAutoSetupModule extends Module {
     }
 
     private void closeIfOpen() {
-        if (mc.player != null && mc.currentScreen instanceof GenericContainerScreen) {
+        if (mc.player != null && mc.currentScreen instanceof HopperScreen) {
             mc.player.closeHandledScreen();
         }
     }
