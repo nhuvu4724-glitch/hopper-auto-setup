@@ -1,16 +1,22 @@
 package com.truong.hopperautosetup;
 
 import meteordevelopment.meteorclient.addons.MeteorAddon;
-import meteordevelopment.meteorclient.systems.modules.Categories;
+import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 
 public class HopperAutoSetup extends MeteorAddon {
     public static final Color COLOR = new Color(145, 61, 226);
+    public static final Category CATEGORY = new Category("Hopper Auto Setup");
 
     @Override
     public void onInitialize() {
         Modules.get().add(new HopperAutoSetupModule());
+    }
+
+    @Override
+    public void onRegisterCategories() {
+        Modules.registerCategory(CATEGORY);
     }
 
     @Override
